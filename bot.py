@@ -1,10 +1,11 @@
 import re
 import socket
 import command
+import requests
 from datetime import datetime
 from sqlalchemy import insert, select
 from database import Session, Base, engine
-from models import ChatMessages, CommandUse, FalseCommands, BotTime, TextCommands
+# from models import ChatMessages, CommandUse, FalseCommands, BotTime, TextCommands
 
 DJANGO_URL = "http://127.0.0.1:8000/api"
 
@@ -19,16 +20,20 @@ class Bot():
         self.client_id = client_id
         self.commands = {s.command_name: s for s in (c(self) for c in command.CommandBase.__subclasses__())}
         self.text_commands = text_commands
+        print('Initted ')
 
 
     # connect to IRC server and begin checking for messages
     def connect_to_channel(self):
+        print(f"Connecting to channel: {self.channel}")
         self.irc = socket.socket()
         self.irc.connect((self.server, self.port))
         self.irc_command(f"PASS oauth:{self.oauth_token}")
         self.irc_command(f"NICK {self.bot_name}")
         self.irc_command(f"JOIN #{self.channel}")        
+        print("Joining Channel")
         self.send_message(self.channel, "I AM ALIVE!!")
+        print('Sending Message: Im alive')
         self.check_for_messages()
 
     
@@ -44,12 +49,16 @@ class Bot():
 
     # decode incoming messages
     def check_for_messages(self):
+        print('Checking for messages')
         while True:
             messages = self.irc.recv(1024).decode()
 
             # respond to pings from Twitch
             if messages.startswith("PING"):
                 self.irc_command("PONG :tmi.twitch.tv")
+
+            #Todo: Add Autoban Here
+            #Todo: Autoban auto remove message
                 
             for m in messages.split("\r\n"):
                 self.parse_message(m)
@@ -90,8 +99,8 @@ class Bot():
             'client-id': self.client_id,
             'Authorization': f"Bearer {self.oauth_token}"
         }
-        response = self.requests.get(url, headers=header)
-        if response.status_code >= 200 and response.status < 300:
+        response = requests.get(url, headers=header)
+        if response.status_code >= 200 and response.status_code< 300:
             return response.json()
         return 
     
@@ -123,7 +132,7 @@ class Bot():
         user = self.get_user(user)
         data = {'user': user['user_id'], 'command': command }
         response = requests.post(f"{DJANGO_URL}/false-commands/", data=data)
-        if response.status > 300:
+        if response.status_code> 300:
             raise BaseException('False Command failed to submit: {}'.format(data))
 
     
@@ -132,7 +141,7 @@ class Bot():
         user = self.get_user(user)
         data = {'user':user['user_id'],'message': message}
         response = requests.post(f"{DJANGO_URL}/messages/", data=data)
-        if response.status > 300:
+        if response.status_code> 300:
             raise BaseException('Message failed to submit: {}'.format(data))
 
     
@@ -141,7 +150,7 @@ class Bot():
         user = self.get_user(user)
         params = {'user':user['user_id'],'command': command, 'is_custom': bool(is_custom)}
         response = request.post(f'{DJANGO_URL}/command-usage/', data=params)
-        if response.status > 300:
+        if response.status_code> 300:
             raise BaseException('Command failed to submit: {}'.format(params))
 
    
@@ -168,7 +177,7 @@ class Bot():
 
     def reload_text_commands(self):
         response = requests.get(f'{DJANGO_URL}/text-commands/')
-        if response.status > 300:
+        if response.status_code> 300:
             raise BaseException('Fail to get commands.')
         raw_commands = response.json()
         commands = {i['commands']: i['message'] for i in raw_commands}

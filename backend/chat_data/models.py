@@ -69,3 +69,4 @@ class FeatureRequest(models.Model):
 
     class Meta: 
         db_table = "feature_requests"
+

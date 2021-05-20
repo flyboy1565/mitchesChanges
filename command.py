@@ -7,8 +7,9 @@ from dateutil import relativedelta
 from abc import ABC, abstractmethod
 from sqlalchemy import select
 from database import engine, Session, Base
-from models import BotTime, Followers
-from bot import DJANGO_URL
+# from models import BotTime, Followers
+
+DJANGO_URL = "http://127.0.0.1:8000/api"
 
 Base.metadata.create_all(bind=engine)
 session = Session()
@@ -278,7 +279,7 @@ class BotTimeCommand(CommandBase):
 
     def execute(self, user, message):
         response  = request.get(f"{DJANGO_URL}/bottime/last/")
-        if response.status > 300:
+        if response.status_code> 300:
             raise BaseException('Fail to get last bottime.')
     
         time = response.json()['uptime']
@@ -321,7 +322,7 @@ class RankCommand(CommandBase):
                 command = f"!{command}"
 
             response = requests.get(f'{DJANGO_URL}/text-commands/')
-            if response.status > 300:
+            if response.status_code> 300:
                 raise BaseException('Fail to get commands.')
             raw_commands = response.json()
             commands = [i['commands'] for i in raw_commands]
@@ -336,7 +337,7 @@ class RankCommand(CommandBase):
                 return
 
             response = requests.get(f'{DJANGO_URL}/rank/{user}/{command}')
-            if response.status > 300:
+            if response.status_code> 300:
                 raise BaseException('Fail to get c')
 
             info = response.json()
@@ -351,7 +352,7 @@ class RankCommand(CommandBase):
         else:
             # get count of unique chatters from chat_messages table
             response = requests.get(f'{DJANGO_URL}/rank/{user}/')
-            if response.status > 300:
+            if response.status_code> 300:
                 raise BaseException('Fail to get c')
 
             info = response.json()
@@ -375,7 +376,25 @@ class FeatureRequestCommand(CommandBase):
     def execute(self, user, message):
         params = {'user':user['user_id'],'message': message}
         response = requests.post(f'{DJANGO_URL}/feature-requests/', data=params)
-        if response.status > 300:
+        if response.status_code> 300:
+            raise BaseException('Command failed to submit: {}'.format(params))
+        self.bot.send_message(
+                channel = self.bot.channel,
+                message = f"Got it! Thanks for your help, {user}!"
+            )
+
+
+
+class BanRequestCommand(CommandBase):
+    @property
+    def command_name(self):
+        return "!ban"
+
+
+    def execute(self, user, message):
+        params = {'user':user['user_id'],'message': message}
+        response = requests.post(f'{DJANGO_URL}/feature-requests/', data=params)
+        if response.status_code> 300:
             raise BaseException('Command failed to submit: {}'.format(params))
         self.bot.send_message(
                 channel = self.bot.channel,
