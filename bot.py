@@ -6,8 +6,7 @@ from sqlalchemy import insert, select
 from database import Session, Base, engine
 from models import ChatMessages, CommandUse, FalseCommands, BotTime, TextCommands
 
-session = Session()
-Base.metadata.create_all(bind=engine)
+DJANGO_URL = "http://127.0.0.1:8000/api"
 
 class Bot():
     def __init__(self, server: str, port: int, oauth_token: str, bot_name: str, channel: str, user_id: str, client_id: str, text_commands: dict):
@@ -84,49 +83,71 @@ class Bot():
         except AttributeError:
             pass
 
+    
+    def get_twitch_user(self, username):
+        url=f'https://api.twitch.tv/helix/users?login={username}'
+        header = {
+            'client-id': self.client_id,
+            'Authorization': f"Bearer {self.oauth_token}"
+        }
+        response = self.requests.get(url, headers=header)
+        if response.status_code >= 200 and response.status < 300:
+            return response.json()
+        return 
+    
+   
+    def get_user(self, username):
+        response = requests.get(f'{DJANGO_URL}/username/{username}/')
+        if response.status_code == 404:
+            data = self.get_twitch_user(username)
+            if data:
+                user_id = data['data'][0]['id']
+                user_info = {
+                    'username': username,
+                    'user_id': user_id
+                }
+                response = requests.get(f'{DJANGO_URL}/users/{user_id}/')
+                if response.status_code == 404:
+                    print(f'Adding New User since no user_id was found for: {username}')
+                    response = requests.post(f'{DJANGO_URL}/users/', data=user_info)
+                else:
+                    user = response.json()
+            else:
+                raise BaseException("Unable to find user from twitch")
+        else:
+            user = response.json()
+        return user
 
     # store data on commands attempted that don't exist
     def store_wrong_command(self, user: str, command: str):
-        entry = {
-            "user" : user,
-            "command" : command
-        }
-        
-        engine.execute(
-             insert(FalseCommands)
-             .values(entry)
-        )
-        
+        user = self.get_user(user)
+        data = {'user': user['user_id'], 'command': command }
+        response = requests.post(f"{DJANGO_URL}/false-commands/", data=data)
+        if response.status > 300:
+            raise BaseException('False Command failed to submit: {}'.format(data))
 
+    
     # insert data to SQLite db
     def store_message_data(self, user: str, message: str):
-        entry = {
-            "user" : user,
-            "message" : message
-        }
-        
-        engine.execute(
-            insert(ChatMessages)
-            .values(entry)
-        )
-        
+        user = self.get_user(user)
+        data = {'user':user['user_id'],'message': message}
+        response = requests.post(f"{DJANGO_URL}/messages/", data=data)
+        if response.status > 300:
+            raise BaseException('Message failed to submit: {}'.format(data))
 
+    
     # insert data to SQLite db
-    from sqlalchemy import insert, select
     def store_command_data(self, user: str, command: str, is_custom: int):
-        entry = {
-            "user" : user,
-            "command" : command,
-            "is_custom" : is_custom
-        }
-        engine.execute(
-            insert(CommandUse)
-            .values(entry)
-        )
+        user = self.get_user(user)
+        params = {'user':user['user_id'],'command': command, 'is_custom': bool(is_custom)}
+        response = request.post(f'{DJANGO_URL}/command-usage/', data=params)
+        if response.status > 300:
+            raise BaseException('Command failed to submit: {}'.format(params))
 
-
+   
     # execute each command
     def execute_command(self, user: str, command: str, message: str):
+        user = self.get_user(user)['username']
         # execute hard-coded command
         if command in self.commands.keys():
             self.commands[command].execute(user, message) 
@@ -146,9 +167,9 @@ class Bot():
 
 
     def reload_text_commands(self):
-        stmt = select(
-            TextCommands.command,
-            TextCommands.message
-        )
-        commands = {k:v for k,v in [e for e in engine.execute(stmt)]}
+        response = requests.get(f'{DJANGO_URL}/text-commands/')
+        if response.status > 300:
+            raise BaseException('Fail to get commands.')
+        raw_commands = response.json()
+        commands = {i['commands']: i['message'] for i in raw_commands}
         return commands

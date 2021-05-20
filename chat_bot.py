@@ -9,17 +9,15 @@ from models import TextCommands, BotTime
 
 
 def get_text_commands() -> dict:
-    command_rows = engine.execute(select(TextCommands.command, TextCommands.message))
-    text_commands = {k:v for k,v in [e for e in command_rows]}
-    return text_commands
+    response = requests.get(f'{DJANGO_URL}/text-commands/')
+    if response.status > 300:
+        raise BaseException('Fail to get commands.'
+    raw_commands = response.json()
+    commands = {i['commands']: i['message'] for i in raw_commands}or e in command_rows]}
+    return commands
 
 
 def main():
-    # create all tables
-    Base.metadata.create_all(bind=engine)
-    session = Session()
-    # log bot startup time
-    engine.execute(insert(BotTime))
     text_commands = get_text_commands()
     environment = Environment()
     bot = Bot(

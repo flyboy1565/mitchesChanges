@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from sqlalchemy import select
 from database import engine, Session, Base
 from models import BotTime, Followers
+from bot import DJANGO_URL
 
 Base.metadata.create_all(bind=engine)
 session = Session()
@@ -276,21 +277,11 @@ class BotTimeCommand(CommandBase):
 
 
     def execute(self, user, message):
-        conn = sqlite3.connect("data.db")
-        cursor = conn.cursor()
-
-        with conn:
-            cursor.execute(f"SELECT time FROM bot_logs;")
-            try:
-                time = cursor.fetchone()[0]
-            except TypeError as e:
-                self.bot.send_message(
-                    channel = self.bot.channel,
-                    message = "This command is broken. Yell at Mitch, not me."
-                )
-                return
-        cursor.close()
-        conn.close()
+        response  = request.get(f"{DJANGO_URL}/bottime/last/")
+        if response.status > 300:
+            raise BaseException('Fail to get last bottime.')
+    
+        time = response.json()['uptime']
         uptime = datetime.strptime(time, "%Y-%m-%d %H:%M:%S.%f")
         now = datetime.now()
 
@@ -323,17 +314,17 @@ class RankCommand(CommandBase):
 
 
     def execute(self, user, message):
-        conn = sqlite3.connect("data.db")
-        cursor = conn.cursor() 
         if len(message.split()) > 1:
             command = message.split()[1]
             # command use rank
             if not command.startswith("!"):
                 command = f"!{command}"
 
-            with conn:
-                cursor.execute("SELECT command FROM text_commands")
-                text_commands = [t[0] for t in cursor.fetchall()]
+            response = requests.get(f'{DJANGO_URL}/text-commands/')
+            if response.status > 300:
+                raise BaseException('Fail to get commands.')
+            raw_commands = response.json()
+            commands = [i['commands'] for i in raw_commands]
 
             commands = [*text_commands, *self.bot.commands] 
 
@@ -344,30 +335,14 @@ class RankCommand(CommandBase):
                     )
                 return
 
-            # query database for number of times each user used a given command
-            with conn:
-                cursor.execute("""SELECT user
-                        FROM command_use
-                        WHERE command = :command
-                        GROUP BY user
-                        ORDER BY COUNT(user) DESC;
-                                """, 
-                                {"command": command}
-                        )
+            response = requests.get(f'{DJANGO_URL}/rank/{user}/{command}')
+            if response.status > 300:
+                raise BaseException('Fail to get c')
 
-                users = [u[0] for u in cursor.fetchall()]
-
-            cursor.close()
-            conn.close()
-            try:
-                user_rank = users.index(user) + 1
-            except ValueError:
-                self.bot.send_message(
-                        channel = self.bot.channel,
-                        message = f"{user}, you haven't used that command since I've been listening. Sorry!"
-                    )
-                return
-            message = f"{user}, you are the number {user_rank} user of the {command} command out of {len(users)} users."
+            info = response.json()
+            user_rank = info['rank']
+            numOfUsers = info['user_count']
+            message = f"{user}, you are the number {user_rank} user of the {command} command out of {numOfUsers} users."
             self.bot.send_message(
                     channel = self.bot.channel,
                     message = message
@@ -375,21 +350,16 @@ class RankCommand(CommandBase):
 
         else:
             # get count of unique chatters from chat_messages table
-            with conn:
-                cursor.execute("""SELECT user 
-                        FROM chat_messages 
-                        GROUP BY user
-                        ORDER BY COUNT(user) DESC;
-                        """) 
-                chatters = [c[0] for c in cursor.fetchall()]
-            cursor.close()
-            conn.close()
+            response = requests.get(f'{DJANGO_URL}/rank/{user}/')
+            if response.status > 300:
+                raise BaseException('Fail to get c')
 
-            # find rank of a given user
-            user_rank = chatters.index(user) + 1
+            info = response.json()
+            user_rank = info['rank']
+            numOfUsers = info['user_count']
 
             # send the rank in chat
-            message = f"{user}, you are number {user_rank} out of {len(chatters)} chatters!"
+            message = f"{user}, you are number {user_rank} out of {numOfUsers} chatters!"
             self.bot.send_message(
                     channel = self.bot.channel,
                     message = message
@@ -403,19 +373,10 @@ class FeatureRequestCommand(CommandBase):
 
 
     def execute(self, user, message):
-        conn = sqlite3.connect("data.db")
-        cursor = conn.cursor()
-        
-        entry = {
-                "time": str(datetime.now()), 
-                "user": user, 
-                "message": message
-            }
-        with conn: 
-            cursor.execute("INSERT INTO feature_requests VALUES (:time, :user, :message)", entry)
-            conn.commit()
-        cursor.close()
-        conn.close()
+        params = {'user':user['user_id'],'message': message}
+        response = requests.post(f'{DJANGO_URL}/feature-requests/', data=params)
+        if response.status > 300:
+            raise BaseException('Command failed to submit: {}'.format(params))
         self.bot.send_message(
                 channel = self.bot.channel,
                 message = f"Got it! Thanks for your help, {user}!"
