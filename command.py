@@ -384,7 +384,6 @@ class FeatureRequestCommand(CommandBase):
             )
 
 
-
 class BanRequestCommand(CommandBase):
     @property
     def command_name(self):

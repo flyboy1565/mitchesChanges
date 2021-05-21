@@ -2,7 +2,6 @@ import requests
 import sqlite3
 from sqlalchemy import select, update, insert
 from bot import Bot
-from environment import Environment
 from datetime import datetime
 from sqlalchemy import select, insert
 from database import Base, Session, engine
@@ -22,17 +21,7 @@ def get_text_commands() -> dict:
 
 def main():
     text_commands = get_text_commands()
-    environment = Environment()
-    bot = Bot(
-        environment.irc_server,
-        environment.irc_port,
-        environment.oauth,
-        environment.bot_name,
-        environment.channel,
-        environment.user_id,
-        environment.client_id,
-        text_commands
-    )
+    bot = Bot('flyboy1565',text_commands)
     bot.connect_to_channel()
 
 

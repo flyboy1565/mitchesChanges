@@ -1,26 +1,42 @@
+import os
 import re
 import socket
 import command
 import requests
 from datetime import datetime
-from sqlalchemy import insert, select
-from database import Session, Base, engine
-# from models import ChatMessages, CommandUse, FalseCommands, BotTime, TextCommands
+from dotenv import load_dotenv
+
+load_dotenv("./credentials.env")
 
 DJANGO_URL = "http://127.0.0.1:8000/api"
 
+
 class Bot():
-    def __init__(self, server: str, port: int, oauth_token: str, bot_name: str, channel: str, user_id: str, client_id: str, text_commands: dict):
-        self.server = server
-        self.port = port
-        self.oauth_token = oauth_token
-        self.bot_name = bot_name
-        self.channel = channel
-        self.user_id = user_id
-        self.client_id = client_id
+    def __init__(self, user_name, text_commands: dict):
+        self.server = "irc.twitch.tv"
+        self.port = 6667
+        self.oauth_token = os.getenv('OAUTH_TOKEN')
+        self.bot_name = os.getenv('BOT_NAME')
+        self.channel = os.getenv('CHANNEL')
+        self.client_id = os.getenv('CLIENT_ID')
+        self.client_secret = os.getenv('CLIENT_SECRET')
+        self.bearer = self.get_bearer()
+        self.user_id = self.get_twitch_user(user_name)['data'][0]['id']
         self.commands = {s.command_name: s for s in (c(self) for c in command.CommandBase.__subclasses__())}
         self.text_commands = text_commands
         print('Initted ')
+
+    def get_bearer(self) -> str:
+        url = "https://id.twitch.tv/oauth2/token"
+        params = {
+            "client_id" : self.client_id,
+            "client_secret" : self.client_secret,
+            "grant_type" : "client_credentials"
+        }
+        response = requests.post(url, params = params, timeout=3)
+        data = response.json()
+        bearer = data["access_token"]
+        return bearer
 
 
     # connect to IRC server and begin checking for messages
@@ -59,6 +75,7 @@ class Bot():
 
             #Todo: Add Autoban Here
             #Todo: Autoban auto remove message
+            print(messages)
                 
             for m in messages.split("\r\n"):
                 self.parse_message(m)
@@ -68,6 +85,7 @@ class Bot():
     def parse_message(self, message: str):
         try:
             # regex pattern
+            print('Message:', message)
             pat_message = re.compile(fr":(?P<user>.+)!.+#{self.channel} :(?P<text>.+)", flags=re.IGNORECASE)
             
             # pull user and text from each message
@@ -94,13 +112,18 @@ class Bot():
 
     
     def get_twitch_user(self, username):
-        url=f'https://api.twitch.tv/helix/users?login={username}'
+        print('Getting Twitch User:', username)
+        url='https://api.twitch.tv/helix/users?login=' + username
         header = {
             'client-id': self.client_id,
-            'Authorization': f"Bearer {self.oauth_token}"
+            'Authorization': f"Bearer {self.bearer}"
         }
+        print("Running Url:", url)
+        print('With Header:', header)
         response = requests.get(url, headers=header)
+        print('Got Response:', response.status_code)
         if response.status_code >= 200 and response.status_code< 300:
+            print(response.json())
             return response.json()
         return 
     
