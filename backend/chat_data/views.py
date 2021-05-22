@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.db.models import Count
 from django.http import JsonResponse, HttpResponseNotFound
+from django.utils import timezone
 
 from .models import StreamUsers, CommandUse
 
@@ -14,4 +15,16 @@ def rankedCommands(requests,user, command=None):
     rank = values.index(user) + 1
     return JsonResponse({'rank': rank, 'user_count': len(values)})
     
-    
+
+def followAge(requests, user):
+    user = StreamUsers.objects.filter(username=user)
+    if user.count() == 1:
+        return JsonResponse({'followTime': user[0].followed_at})
+ 
+
+def follow(requests, user_id):
+    user = StreamUsers.objects.get(user_id=user_id)
+    user.following = True
+    user.followed_at = timezone.now()
+    user.save()
+    return JsonResponse({'following': True})

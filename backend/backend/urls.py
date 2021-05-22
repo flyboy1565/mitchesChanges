@@ -6,13 +6,12 @@ from rest_framework.routers import DefaultRouter
 from chat_data.api.views import (
     StreamUsersViewSet, ChatMessageViewSet, BotTimeViewSet, 
     CommandUseViewSet, TextCommandsViewSet, FalseCommandsViewSet,
-    UsersNameViewSet, BotTimeViewSet, FeatureRequestsViewSet
+    BotTimeViewSet, FeatureRequestsViewSet
 )
 
 
 router = DefaultRouter()
 router.register('users', StreamUsersViewSet, basename='users')
-router.register('username', UsersNameViewSet, basename='usernames')
 router.register('messages', ChatMessageViewSet, basename='messages')
 router.register('command-usage', CommandUseViewSet, basename='commands-usage')
 router.register('text-commands', TextCommandsViewSet, basename='text-commands')
