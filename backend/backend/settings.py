@@ -13,11 +13,12 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 from pathlib import Path
 from dotenv import load_dotenv
 from os import getenv
+from os.path import join
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-load_dotenv('../backend.env')
+# load_dotenv(join(BASE_DIR, 'backend.env'))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
@@ -28,7 +29,7 @@ SECRET_KEY = getenv('DJANGO_SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = "localhost 127.0.0.1 [::1]".split(" ")
+ALLOWED_HOSTS = "localhost 127.0.0.1 [::1] backend".split(" ")
 
 
 # Application definition
@@ -83,11 +84,11 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': getenv('PSQL_DB'),
-        'USER': getenv('PSQL_USER'),
-        'PASSWORD': getenv('PSQL_PASS'),
-        'HOST':  getenv('PSQL_HOST'),
-        'PORT':  getenv('PSQL_PORT'),
+        'NAME': getenv('SQL_DATABASE'),
+        'USER': getenv('SQL_USER'),
+        'PASSWORD': getenv('SQL_PASSWORD'),
+        'HOST':  getenv('SQL_HOST'),
+        'PORT':  getenv('SQL_PORT'),
     }
 }
 

@@ -32,13 +32,13 @@ class AddCommand(CommandBase):
 
     @property
     def command_name(self):
-        return "!addcommand"
+        return "{self.bot.bot_trigger}addcommand"
 
 
     def execute(self, user, message):
         if user == self.bot.channel:
             first_word = message.split()[1]
-            command = first_word if first_word.startswith("!") else "!" + first_word
+            command = first_word if first_word.startswith("{self.bot.bot_trigger}") else "{self.bot.bot_trigger}" + first_word
             result = " ".join(message.split()[2:])
 
             if command in self.bot.text_commands.keys():
@@ -52,7 +52,7 @@ class AddCommand(CommandBase):
             if response.status_code >= 200 and response.status_code < 300:
                 self.bot.send_message(
                     self.bot.channel,
-                    f"{command} added successfully!"
+                    f"{command} added successfully{self.bot.bot_trigger}"
                 )
             else:
                 self.bot.send_message(
@@ -64,7 +64,7 @@ class AddCommand(CommandBase):
 class DeleteCommand(CommandBase):
     @property
     def command_name(self):
-        return "!delcommand"
+        return "{self.bot.bot_trigger}delcommand"
 
 
     def execute(self, user, message):
@@ -74,11 +74,11 @@ class DeleteCommand(CommandBase):
             except IndexError:
                 self.bot.send_message(
                     self.bot.channel,
-                    "You didn't select a command to delete!"
+                    "You didn't select a command to delete{self.bot.bot_trigger}"
                 )
                 return
 
-            command = first_word if first_word.startswith("!") else "!" + first_word
+            command = first_word if first_word.startswith("{self.bot.bot_trigger}") else "{self.bot.bot_trigger}" + first_word
             
             current_commands = self.bot.reload_text_commands()
             if command not in current_commands:
@@ -94,7 +94,7 @@ class DeleteCommand(CommandBase):
             if response.status_code >= 200 and response.status_code < 300:
                 self.bot.send_message(
                     self.bot.channel,
-                    f"!{command} command deleted, @{user}."
+                    f"{self.bot.bot_trigger}{command} command deleted, @{user}."
                 )
 
 
@@ -102,13 +102,13 @@ class DeleteCommand(CommandBase):
 class EditCommand(CommandBase):
     @property
     def command_name(self):
-        return "!editcommand"
+        return "{self.bot.bot_trigger}editcommand"
 
 
     def execute(self, user, message):
         if user == self.bot.channel:
             first_word = message.split()[1]
-            command = first_word if first_word.startswith("!") else "!" + first_word
+            command = first_word if first_word.startswith("{self.bot.bot_trigger}") else "{self.bot.bot_trigger}" + first_word
 
 
             current_commands = self.bot.reload_text_commands()
@@ -125,14 +125,14 @@ class EditCommand(CommandBase):
             if response.status_code >= 200 and response.status_code < 300:
                 self.bot.send_message(
                     self.bot.channel,
-                    f"{command} command edit complete @{user}!"
+                    f"{command} command edit complete @{user}{self.bot.bot_trigger}"
                 )
 
 
 class JokeCommand(CommandBase):
     @property
     def command_name(self):
-        return "!joke"
+        return "{self.bot.bot_trigger}joke"
 
 
     def execute(self, user, message):
@@ -149,14 +149,14 @@ class JokeCommand(CommandBase):
                 break
         self.bot.send_message(
             channel = self.bot.channel,
-            message = f"I'm sorry! I couldn't find a short enough joke. :("
+            message = f"I'm sorry{self.bot.bot_trigger} I couldn't find a short enough joke. :("
         )
 
 
 class PoemCommand(CommandBase):
     @property
     def command_name(self):
-        return "!poem"
+        return "{self.bot.bot_trigger}poem"
 
 
     def execute(self, user, message):
@@ -183,7 +183,7 @@ class PoemCommand(CommandBase):
 class CommandsCommand(CommandBase):
     @property
     def command_name(self):
-        return "!commands"
+        return "{self.bot.bot_trigger}commands"
 
 
     def execute(self, user, message):
@@ -206,7 +206,7 @@ class CommandsCommand(CommandBase):
 class FollowAgeCommand(CommandBase):
     @property
     def command_name(self):
-        return "!followage"
+        return "{self.bot.bot_trigger}followage"
 
 
     def execute(self, user, message):
@@ -236,7 +236,7 @@ class FollowAgeCommand(CommandBase):
                 message += f" {v} {k}"
                 if v > 1:
                     message += "s"
-        message += "!"
+        message += "{self.bot.bot_trigger}"
         self.bot.send_message(
             channel = self.bot.channel,
             message = message
@@ -246,7 +246,7 @@ class FollowAgeCommand(CommandBase):
 class BotTimeCommand(CommandBase):
     @property
     def command_name(self):
-        return "!bottime"
+        return "{self.bot.bot_trigger}bottime"
 
 
     def execute(self, user, message):
@@ -273,7 +273,7 @@ class BotTimeCommand(CommandBase):
                 message += f" {v} {k}"
                 if v > 1:
                     message += "s"
-        message += "!"
+        message += "{self.bot.bot_trigger}"
         self.bot.send_message(
             channel = self.bot.channel,
             message = message
@@ -283,15 +283,15 @@ class BotTimeCommand(CommandBase):
 class RankCommand(CommandBase):
     @property
     def command_name(self):
-        return "!rank"
+        return "{self.bot.bot_trigger}rank"
 
 
     def execute(self, user, message):
         if len(message.split()) > 1:
             command = message.split()[1]
             # command use rank
-            if not command.startswith("!"):
-                command = f"!{command}"
+            if not command.startswith("{self.bot.bot_trigger}"):
+                command = f"{self.bot.bot_trigger}{command}"
 
             response = requests.get(f'{self.bot.DJANGO_URL}/text-commands/')
             if response.status_code> 300:
@@ -304,7 +304,7 @@ class RankCommand(CommandBase):
             if command not in commands:
                 self.bot.send_message(
                         channel = self.bot.channel,
-                        message = f"That is not a command that I have. Sorry!"
+                        message = f"That is not a command that I have. Sorry{self.bot.bot_trigger}"
                     )
                 return
 
@@ -332,7 +332,7 @@ class RankCommand(CommandBase):
             numOfUsers = info['user_count']
 
             # send the rank in chat
-            message = f"{user}, you are number {user_rank} out of {numOfUsers} chatters!"
+            message = f"{user}, you are number {user_rank} out of {numOfUsers} chatters{self.bot.bot_trigger}"
             self.bot.send_message(
                     channel = self.bot.channel,
                     message = message
@@ -342,7 +342,7 @@ class RankCommand(CommandBase):
 class FeatureRequestCommand(CommandBase):
     @property
     def command_name(self):
-        return "!featurerequest"
+        return "{self.bot.bot_trigger}featurerequest"
 
 
     def execute(self, user, message):
@@ -352,14 +352,14 @@ class FeatureRequestCommand(CommandBase):
             raise BaseException('Command failed to submit: {}'.format(params))
         self.bot.send_message(
                 channel = self.bot.channel,
-                message = f"Got it! Thanks for your help, {user}!"
+                message = f"Got it{self.bot.bot_trigger} Thanks for your help, {user}{self.bot.bot_trigger}"
             )
 
 
 class BanRequestCommand(CommandBase):
     @property
     def command_name(self):
-        return "!ban"
+        return "{self.bot.bot_trigger}ban"
 
 
     def execute(self, user, message):
@@ -369,31 +369,31 @@ class BanRequestCommand(CommandBase):
             raise BaseException('Command failed to submit: {}'.format(params))
         self.bot.send_message(
                 channel = self.bot.channel,
-                message = f"Got it! Thanks for your help, {user}!"
+                message = f"Got it{self.bot.bot_trigger} Thanks for your help, {user}{self.bot.bot_trigger}"
             )
 
 
-# TODO: !lurk command to thank user for lurking with their name
+# TODO: {self.bot.bot_trigger}lurk command to thank user for lurking with their name
 class LurkCommand(CommandBase):
     @property
     def command_name(self):
-        return "!lurk"
+        return "{self.bot.bot_trigger}lurk"
 
     
     def execute(self, user, message):
         self.bot.send_message(
             channel = self.bot.channel,
-            message = f"Don't worry {user}, we got mad love for the lurkers! <3"
+            message = f"Don't worry {user}, we got mad love for the lurkers{self.bot.bot_trigger} <3"
         )
         
 
-# TODO: !so command to shout out a user and link their channel
+# TODO: {self.bot.bot_trigger}so command to shout out a user and link their channel
 # user submitting the command can't shoutout themselves
 # verify that shouted user is real
 class ShoutoutCommand(CommandBase):
     @property
     def command_name(self):
-        return "!so"
+        return "{self.bot.bot_trigger}so"
 
 
     def execute(self, user, message):
@@ -401,7 +401,7 @@ class ShoutoutCommand(CommandBase):
         if len(message.split()) < 2:
             self.bot.send_message(
                 channel = self.bot.channel,
-                message = f"I can't shoutout no one, {user}!"
+                message = f"I can't shoutout no one, {user}{self.bot.bot_trigger}"
             )
 
         else:
@@ -411,7 +411,7 @@ class ShoutoutCommand(CommandBase):
             if user.lower() == so_user.lower():
                 self.bot.send_message(
                     channel = self.bot.channel,
-                    message = f"You can't shoutout yourself, {user}!"
+                    message = f"You can't shoutout yourself, {user}{self.bot.bot_trigger}"
                 )
                 return
 
@@ -432,7 +432,7 @@ class ShoutoutCommand(CommandBase):
                 so_url = f"https://twitch.tv/{so_login}"
                 self.bot.send_message(
                     channel = self.bot.channel,
-                    message = f"Shoutout to {so_display_name}! Check them out here! {so_url}"
+                    message = f"Shoutout to {so_display_name}{self.bot.bot_trigger} Check them out here{self.bot.bot_trigger} {so_url}"
                 )
 
             # user could not exist or not have streamed in 6 months

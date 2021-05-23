@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 load_dotenv("./credentials.env")
 
-DJANGO_URL = "http://127.0.0.1:8000/api"
+DJANGO_URL = "http://backend:8000/api"
 
 
 class Bot():
@@ -22,12 +22,16 @@ class Bot():
         self.client_secret = os.getenv('CLIENT_SECRET')
         self.bearer = self.get_bearer()
         self.user_name = os.getenv('USERNAME')
-        self.user_id = self.get_twitch_user(self.user_name)['data'][0]['id']
+        self.bot_trigger = os.getenv('BOT_TRIGGER')
+        # self.user_id = self.get_twitch_user(self.user_name)['data'][0]['id']
         self.commands = {s.command_name: s for s in (c(self) for c in command.CommandBase.__subclasses__())}
         self.text_commands = self.reload_text_commands()
         self.DJANGO_URL = DJANGO_URL
 
     def get_bearer(self) -> str:
+        print('Getting Bearer')
+        print('CLIENT_ID:', self.client_id)
+        print('CLIENT_Secret:', self.client_secret)
         url = "https://id.twitch.tv/oauth2/token"
         params = {
             "client_id" : self.client_id,
@@ -40,8 +44,9 @@ class Bot():
             bearer = data["access_token"]
             return bearer
         else:
-            print(response.status_code)
-            print(response.content)
+            print(f'Bearer Requesst Failed: {response.status_code}')
+            print(f'Request URL: {response.request.url}')
+            print(f'Bearer Requesst Failed: {response.content}')
 
 
     # connect to IRC server and begin checking for messages
@@ -58,7 +63,7 @@ class Bot():
     
     # execute IRC commands
     def irc_command(self, command: str):
-        self.irc.send((command + "\r\n").encode())
+        print(f'IRC - {command} :', self.irc.send((command + "\r\n").encode()))
 
 
     # send privmsg's, which are normal chat messages
@@ -87,9 +92,17 @@ class Bot():
     def parse_message(self, message: str):
         try:
             # regex pattern
-            print('Message:', message)
-            # regex = "@badge-info=(?P<badge_info>.*);badges=(?P<badges>.*);.*display-name=(?P<display_name>.*);em.*;id=(?P<message_id>.*);mod=(?P<mod>\d);room-id=(?P<room_id>.*);subscriber=(?P<subscriber>\d+);.*user-id=(?P<user_id>\d+);user-type=(?P<user_type>.*)\sPRIVMSG\s(?P<room_name>.*)\s:(?P<message>.*)"
-            regex = "@badge-info=(?P<badge_info>.*);badges=(?P<badges>.*);display-name=(?P<display_name>.*);em.*;id=(?P<message_id>.*);mod=(?P<mod>\d);room-id=(?P<room_id>.*);subscriber=(?P<subscriber>\d+);.*user-id=(?P<user_id>\d+);user-type=(?P<user_type>.*)\sPRIVMSG\s(?P<room_name>.*)\s:(?P<message>.*)"
+            if self.bot.channel == 'mitchesworkshop':
+                regex = "@badge-info=(?P<badge_info>.*);badges=(?P<badges>.*);.*display-name=(?P<display_name>.*);em.*;id=(?P<message_id>.*);mod=(?P<mod>\d);room-id=(?P<room_id>.*);subscriber=(?P<subscriber>\d+);.*user-id=(?P<user_id>\d+);user-type=(?P<user_type>.*)\sPRIVMSG\s(?P<room_name>.*)\s:(?P<message>.*)"
+            if self.bot.channel == 'pokimane':
+                regex = "@badge-info=(?P<badge_info>.*);badges=(?P<badges>.*);display-name=(?P<display_name>.*);em.*;id=(?P<message_id>.*);mod=(?P<mod>\d);room-id=(?P<room_id>.*);subscriber=(?P<subscriber>\d+);.*user-id=(?P<user_id>\d+);user-type=(?P<user_type>.*)\sPRIVMSG\s(?P<room_name>.*)\s:(?P<message>.*)"
+            elif message.strip() == '':
+                return
+                # regex = "@badge-info=(?P<badge_info>.*);badges=(?P<badges>.*);display-name=(?P<display_name>.*);em.*;id=(?P<message_id>.*);mod=(?P<mod>\d);room-id=(?P<room_id>.*);subscriber=(?P<subscriber>\d+);.*user-id=(?P<user_id>\d+);user-type=(?P<user_type>.*)\sPRIVMSG\s(?P<room_name>.*)\s:(?P<message>.*)"
+            else:
+                print('Message: ', message)
+                regex = "user-id=(?P<user_id>\d+);user-type=(?P<user_type>.*)\sPRIVMSG\s(?P<room_name>.*)\s:(?P<message>.*)"
+
             pat_message = re.compile(regex, flags=re.IGNORECASE)
 
             details = pat_message.search(message).groupdict()
@@ -101,7 +114,7 @@ class Bot():
                 print("pong sent")
             user = self.get_user(details['user_id'])
             # check for commands being used
-            if message.startswith("!") or message.startswith(('! ')):
+            if message.startswith("{self.bot_trigger}"):
                 command = details['message'].split()[0].lower()
                 if command not in self.text_commands and command not in self.commands:
                     self.store_wrong_command(user, command)
@@ -133,7 +146,7 @@ class Bot():
     def get_user(self, user_id):
         response = requests.get(f'{DJANGO_URL}/users/{user_id}/')
         if response.status_code == 404:
-            print(f'Adding New User since no user_id was found for: {username}')
+            print(f'Adding New User since no user_id was found for: {user_id}')
             response = requests.post(f'{DJANGO_URL}/users/', data=user_info)
         else:
             user = response.json()
@@ -184,9 +197,14 @@ class Bot():
 
 
     def reload_text_commands(self):
+        from subprocess import getoutput
+        print(f'URL : {DJANGO_URL}')
+        print(f'URL : {DJANGO_URL}/text-commands/')
+        # print(getoutput(f'curl {DJANGO_URL}'))
+        print()
         response = requests.get(f'{DJANGO_URL}/text-commands/')
         if response.status_code> 300:
-            raise BaseException('Fail to get commands.')
+            raise BaseException(f'Fail to get commands. {response.request.url} - {response.status_code}')
         raw_commands = response.json()
         commands = {i['commands']: i['message'] for i in raw_commands}
         return commands
