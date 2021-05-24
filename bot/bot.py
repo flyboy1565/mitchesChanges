@@ -17,7 +17,7 @@ class Bot():
         self.port = 6667
         self.oauth_token = os.getenv('OAUTH_TOKEN')
         self.bot_name = os.getenv('BOT_NAME')
-        self.channel = os.getenv('CHANNEL')
+        self.channel = ' #'.join(os.getenv('CHANNEL').split(','))
         self.client_id = os.getenv('CLIENT_ID')
         self.client_secret = os.getenv('CLIENT_SECRET')
         self.bearer = self.get_bearer()
@@ -85,6 +85,7 @@ class Bot():
             #Todo: Autoban auto remove message            sprint(messages)
                 
             for m in messages.split("\r\n"):
+                print('Message --:', m)
                 self.parse_message(m)
 
 
@@ -92,27 +93,32 @@ class Bot():
     def parse_message(self, message: str):
         try:
             # regex pattern
-            if self.bot.channel == 'mitchesworkshop':
-                regex = "@badge-info=(?P<badge_info>.*);badges=(?P<badges>.*);.*display-name=(?P<display_name>.*);em.*;id=(?P<message_id>.*);mod=(?P<mod>\d);room-id=(?P<room_id>.*);subscriber=(?P<subscriber>\d+);.*user-id=(?P<user_id>\d+);user-type=(?P<user_type>.*)\sPRIVMSG\s(?P<room_name>.*)\s:(?P<message>.*)"
-            if self.bot.channel == 'pokimane':
-                regex = "@badge-info=(?P<badge_info>.*);badges=(?P<badges>.*);display-name=(?P<display_name>.*);em.*;id=(?P<message_id>.*);mod=(?P<mod>\d);room-id=(?P<room_id>.*);subscriber=(?P<subscriber>\d+);.*user-id=(?P<user_id>\d+);user-type=(?P<user_type>.*)\sPRIVMSG\s(?P<room_name>.*)\s:(?P<message>.*)"
-            elif message.strip() == '':
-                return
-                # regex = "@badge-info=(?P<badge_info>.*);badges=(?P<badges>.*);display-name=(?P<display_name>.*);em.*;id=(?P<message_id>.*);mod=(?P<mod>\d);room-id=(?P<room_id>.*);subscriber=(?P<subscriber>\d+);.*user-id=(?P<user_id>\d+);user-type=(?P<user_type>.*)\sPRIVMSG\s(?P<room_name>.*)\s:(?P<message>.*)"
+            if 'client-nonce' in message:
+                regex = "@badge-info=(?P<badge_info>.*);badges=(?P<badges>.*);client-nonce=.*;.*display-name=(?P<display_name>.*);em.*;id=(?P<message_id>.*);mod=(?P<mod>\d);room-id=(?P<room_id>.*);subscriber=(?P<subscriber>\d+);.*user-id=(?P<user_id>\d+);user-type=(?P<user_type>.*)\sPRIVMSG\s(?P<room_name>.*)\s:(?P<message>.*)"
             else:
-                print('Message: ', message)
-                regex = "user-id=(?P<user_id>\d+);user-type=(?P<user_type>.*)\sPRIVMSG\s(?P<room_name>.*)\s:(?P<message>.*)"
+                regex = "@badge-info=(?P<badge_info>.*);badges=(?P<badges>.*);color=.*;.*display-name=(?P<display_name>.*);em.*;id=(?P<message_id>.*);mod=(?P<mod>\d);room-id=(?P<room_id>.*);subscriber=(?P<subscriber>\d+);.*user-id=(?P<user_id>\d+);user-type=(?P<user_type>.*)\sPRIVMSG\s(?P<room_name>.*)\s:(?P<message>.*)"
+            
 
             pat_message = re.compile(regex, flags=re.IGNORECASE)
 
-            details = pat_message.search(message).groupdict()
+            try:
+                details = pat_message.search(message).groupdict()
+            except AttributeError:
+                c = re.compile('PRIVMSG\s(?P<room_name>.*)\s:', flags=re.IGNORECASE)
+                room = c.search(message).groupdict()
+                u = re.compile('user-id=(?P<user_id>\d+);', flags=re.IGNORECASE)
+                user = u.search(message).groupdict()
+                self.send_message(self.channel, room['room_name'], user['user_id'])
+                return
+
+            print(f'{details["message_id"]} - {details["display_name"]}: {details["message"]}')
         
             # respond to server pings
             if message.lower().startswith("ping"):
                 print("ping received")
                 self.irc_command("PONG")
                 print("pong sent")
-            user = self.get_user(details['user_id'])
+            user = self.get_user(details['user_id'], details['display_name'])
             # check for commands being used
             if message.startswith("{self.bot_trigger}"):
                 command = details['message'].split()[0].lower()
@@ -120,7 +126,8 @@ class Bot():
                     self.store_wrong_command(user, command)
                 else:
                     self.execute_command(user['username'], command, message)
-            self.store_message_data(user, message)
+            
+            self.store_message_data(user,details['room_name'], details['message'])
 
         except AttributeError:
             pass
@@ -143,13 +150,18 @@ class Bot():
         return 
     
    
-    def get_user(self, user_id):
+    def get_user(self, user_id, username):
         response = requests.get(f'{DJANGO_URL}/users/{user_id}/')
         if response.status_code == 404:
             print(f'Adding New User since no user_id was found for: {user_id}')
-            response = requests.post(f'{DJANGO_URL}/users/', data=user_info)
+            response = requests.post(f'{DJANGO_URL}/users/', data={'user_id': user_id, 'username': username})
+            if response.status_code < 300:
+                user = response.json()
+            else:
+                print('Failed Add User:', response.status_code)
         else:
             user = response.json()
+        print('USER:', user)
         return user
 
     # store data on commands attempted that don't exist
@@ -161,8 +173,9 @@ class Bot():
 
     
     # insert data to SQLite db
-    def store_message_data(self, user: str, message: str):
-        data = {'user':user['user_id'],'message': message}
+    def store_message_data(self, user: str, room:str, message: str):
+        data = {'user':user['user_id'],'message': message, 'room': room}
+        print('Creating Message:', data)
         response = requests.post(f"{DJANGO_URL}/messages/", data=data)
         if response.status_code> 300:
             raise BaseException('Message failed to submit: {}'.format(data))

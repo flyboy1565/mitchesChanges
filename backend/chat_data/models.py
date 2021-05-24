@@ -22,6 +22,7 @@ class StreamUsers(models.Model):
 class ChatMessages(models.Model):
     time = models.DateTimeField(auto_now_add=True)
     user = models.ForeignKey(StreamUsers, related_name='messages', on_delete=models.DO_NOTHING)
+    room = models.CharField(max_length=60)
     message = models.TextField()
 
     class Meta: 
