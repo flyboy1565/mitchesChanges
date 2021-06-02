@@ -1,3 +1,4 @@
+from django import db
 from django.db import models
 
 
@@ -19,10 +20,19 @@ class StreamUsers(models.Model):
         db_table = "followers"
 
 
+class ChatRoom(models.Model):
+    room_id = models.PositiveIntegerField(unique=True)
+    name = models.CharField(max_length=60, unique=True)
+
+    class Meta:
+        db_table = 'rooms'
+
+
 class ChatMessages(models.Model):
+    twith_id = models.CharField(max_length=50, unique=True)
     time = models.DateTimeField(auto_now_add=True)
     user = models.ForeignKey(StreamUsers, related_name='messages', on_delete=models.DO_NOTHING)
-    room = models.CharField(max_length=60)
+    room = models.ForeignKey(ChatRoom, related_name='room', on_delete=models.DO_NOTHING)
     message = models.TextField()
 
     class Meta: 
@@ -37,6 +47,7 @@ class CommandUse(models.Model):
 
     class Meta: 
         db_table = "command_use"
+        
 
 class TextCommands(models.Model):
     command = models.CharField(max_length=60)
@@ -71,3 +82,12 @@ class FeatureRequest(models.Model):
     class Meta: 
         db_table = "feature_requests"
 
+
+class RoomsToMonitor(models.Model):
+    name = models.CharField(max_length=60, unique=True)
+    created = models.DateTimeField(auto_now_add=True)
+    last_monitored = models.DateTimeField(auto_now=True)
+    active = models.BooleanField()
+
+    class Meta:
+        db_table = 'rooms_to_monitor'

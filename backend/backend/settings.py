@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # Third Party Apps
     'rest_framework',
+    'django_admin_listfilter_dropdown',
     #Local Apps
     'chat_data',
 ]

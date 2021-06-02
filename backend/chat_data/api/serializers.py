@@ -1,4 +1,4 @@
-from rest_framework.serializers import ModelSerializer
+from rest_framework.serializers import ModelSerializer, HyperlinkedModelSerializer
 
 from chat_data.models import *
 
@@ -12,6 +12,12 @@ class UsersSerializer(ModelSerializer):
 class ChatMessageSerializer(ModelSerializer):
     class Meta:
         model = ChatMessages
+        fields = '__all__'
+
+
+class ChatRoomsSerializer(ModelSerializer):
+    class Meta:
+        model = ChatRoom
         fields = '__all__'
 
 
@@ -43,3 +49,10 @@ class FeatureRequestSerializer(ModelSerializer):
     class Meta: 
         model = FeatureRequest
         fields = '__all__'
+
+
+class RoomsToMonitorSerializer(ModelSerializer):
+    class Meta: 
+        model = RoomsToMonitor
+        fields = ('name','active')
+        # lookup_field = 'pk'

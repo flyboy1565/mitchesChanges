@@ -15,9 +15,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # install dependencies
 RUN pip install --upgrade pip
+RUN apt-get -y install espeak alsa-utils avahi-utils
 COPY ./requirements.txt /app/requirements.txt
 RUN pip install -r /app/requirements.txt
-
 
 # ENTRYPOINT ["/usr/src/app/entrypoint.sh"]
 # CMD gunicorn hsweb.wsgi:application --bind 0.0.0.0:$PORT 

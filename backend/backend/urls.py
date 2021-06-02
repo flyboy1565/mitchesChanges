@@ -6,7 +6,8 @@ from rest_framework.routers import DefaultRouter
 from chat_data.api.views import (
     StreamUsersViewSet, ChatMessageViewSet, BotTimeViewSet, 
     CommandUseViewSet, TextCommandsViewSet, FalseCommandsViewSet,
-    BotTimeViewSet, FeatureRequestsViewSet
+    BotTimeViewSet, FeatureRequestsViewSet, ChatRoomsViewSet,
+    RoomsToMonitorViewSet,
 )
 
 
@@ -18,6 +19,8 @@ router.register('text-commands', TextCommandsViewSet, basename='text-commands')
 router.register('false-commands', FalseCommandsViewSet, basename='false-commands')
 router.register('bottime', BotTimeViewSet, basename='bottime')
 router.register('feature-requests', FeatureRequestsViewSet, basename='feature-requests')
+router.register('rooms', ChatRoomsViewSet, basename='chat-rooms')
+router.register('monitor_rooms', RoomsToMonitorViewSet, basename='monitor-rooms')
 
 
 urlpatterns = [

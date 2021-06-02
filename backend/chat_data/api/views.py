@@ -20,6 +20,17 @@ class ChatMessageViewSet(GenericViewSet,  # generic view functionality
     queryset = ChatMessages.objects.all()
 
 
+class ChatRoomsViewSet(GenericViewSet,  # generic view functionality
+                    CreateModelMixin,  # handles POSTs
+                    RetrieveModelMixin,  # handles GETs for 1 Company
+                    UpdateModelMixin,  # handles PUTs and PATCHes
+                    ListModelMixin):  # handles GETs for many Companies
+
+    serializer_class = ChatRoomsSerializer
+    queryset = ChatRoom.objects.all()
+    lookup_field = 'name'
+
+
 class StreamUsersViewSet(GenericViewSet,  # generic view functionality
                     CreateModelMixin,  # handles POSTs
                     RetrieveModelMixin,  # handles GETs for 1 Company
@@ -88,3 +99,13 @@ class FeatureRequestsViewSet(GenericViewSet,  # generic view functionality
 
     serializer_class = FeatureRequestSerializer
     queryset = FeatureRequest.objects.all()
+
+
+class RoomsToMonitorViewSet(GenericViewSet,  # generic view functionality
+                    CreateModelMixin,  # handles POSTs
+                    RetrieveModelMixin,  # handles GETs for 1 Company
+                    UpdateModelMixin,  # handles PUTs and PATCHes
+                    ListModelMixin):  # handles GETs for many Companies
+
+    serializer_class = RoomsToMonitorSerializer
+    queryset = RoomsToMonitor.objects.all()
