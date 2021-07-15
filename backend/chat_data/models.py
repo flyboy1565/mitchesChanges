@@ -24,6 +24,9 @@ class ChatRoom(models.Model):
     room_id = models.PositiveIntegerField(unique=True)
     name = models.CharField(max_length=60, unique=True)
 
+    def __str__(self) -> str:
+        return self.name
+
     class Meta:
         db_table = 'rooms'
 
@@ -35,6 +38,9 @@ class ChatMessages(models.Model):
     room = models.ForeignKey(ChatRoom, related_name='room', on_delete=models.DO_NOTHING)
     message = models.TextField()
 
+    def __str__(self) -> str:
+        return f"{self.room} - {self.user__username}"
+
     class Meta: 
         db_table = "chat_messages"
     
@@ -42,6 +48,7 @@ class ChatMessages(models.Model):
 class CommandUse(models.Model):
     time = models.DateTimeField(auto_now_add=True)
     user = models.ForeignKey(StreamUsers, related_name='command_usage', on_delete=models.DO_NOTHING)
+    message = models.ForeignKey(ChatMessages, related_name="cu_message", on_delete=models.DO_NOTHING)
     command = models.CharField(max_length=60)
     is_custom = models.BooleanField()
 
@@ -53,6 +60,9 @@ class TextCommands(models.Model):
     command = models.CharField(max_length=60)
     message = models.TextField()
 
+    def __str__(self) -> str:
+        return self.command
+
     class Meta: 
         db_table = "text_commands"
 
@@ -60,6 +70,7 @@ class TextCommands(models.Model):
 class FalseCommands(models.Model):
     time = models.DateTimeField(auto_now_add=True)
     user = models.ForeignKey(StreamUsers, related_name='false_commands', on_delete=models.DO_NOTHING)
+    message = models.ForeignKey(ChatMessages, related_name="fc_message", on_delete=models.DO_NOTHING)
     command = models.CharField(max_length=60)
 
     class Meta: 
@@ -69,6 +80,9 @@ class FalseCommands(models.Model):
 class BotTime(models.Model):
     uptime = models.DateTimeField(auto_now_add=True)
 
+    def __str__(self) -> str:
+        return self.uptime.strftime('%Y-%m-%d %H:%M:%S')
+
     class Meta: 
         db_table = "bot_time"
 
@@ -76,6 +90,7 @@ class BotTime(models.Model):
 class FeatureRequest(models.Model):
     time = models.DateTimeField(auto_now_add=True)
     user = models.ForeignKey(StreamUsers, related_name='feature_requests', on_delete=models.DO_NOTHING)
+    msg_link = models.ForeignKey(ChatMessages, related_name="fr_message", on_delete=models.DO_NOTHING)
     message = models.TextField()
     added_to_tasks = models.BooleanField()
 
@@ -88,6 +103,9 @@ class RoomsToMonitor(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     last_monitored = models.DateTimeField(auto_now=True)
     active = models.BooleanField()
+
+    def __str__(self) -> str:
+        return self.name
 
     class Meta:
         db_table = 'rooms_to_monitor'

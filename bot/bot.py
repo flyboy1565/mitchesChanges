@@ -72,7 +72,7 @@ class Bot():
                 print(text)
                 self.current_monitoring.append(channel)
                 self.irc_command(f"JOIN #{channel}")
-                self.send_message(channel, "Hello All!")
+                # self.send_message(channel, "Hello All!")
         self.irc_command(f"CAP REQ :twitch.tv/tags")        
         self.check_for_messages()
 
@@ -166,9 +166,9 @@ class Bot():
                 command = details['message'].replace(self.bot_trigger, '').split()[0].lower()
                 print('TextCommand Request: {} by user {}'.format(command, user))
                 if command not in self.text_commands and command not in self.commands:
-                    self.store_wrong_command(user, command)
+                    self.store_wrong_command(user, command, details['message_id'])
                 else:
-                    self.execute_command(details['user_id'], details['room_name'], command, message)
+                    self.execute_command(details['user_id'], details['room_name'], command, message, details['message_id'])
             
             self.store_message_data(user, room, details['message'], details['message_id'])
             if self.message_trigger == 15:
@@ -226,8 +226,8 @@ class Bot():
         
 
     # store data on commands attempted that don't exist
-    def store_wrong_command(self, user: str, command: str):
-        data = {'user': user['user_id'], 'command': command }
+    def store_wrong_command(self, user: str, command: str, message_id: str):
+        data = {'user': user['user_id'], 'command': command, 'message': message_id }
         response = requests.post(f"{DJANGO_URL}/false-commands/", data=data)
         if response.status_code> 300:
             raise BaseException('False Command failed to submit: {}'.format(data))
@@ -243,15 +243,15 @@ class Bot():
 
     
     # insert data to SQLite db
-    def store_command_data(self, user: int, command: str, is_custom: int):
-        data={"user":user , "command": command, "is_custom": bool(is_custom)}
+    def store_command_data(self, user: int, command: str, is_custom: int, message_id: int):
+        data={"user":user , "command": command, "is_custom": bool(is_custom), 'message': message_id}
         response = requests.post(f'{DJANGO_URL}/command-usage/', data=data)
         if response.status_code> 300:
             raise BaseException('Command failed to submit: {}'.format(data))
 
    
     # execute each command
-    def execute_command(self, user: int, channel:str, command: str, message: str):
+    def execute_command(self, user: int, channel:str, command: str, message: str, message_id: str):
         # execute hard-coded command
         if command in self.commands.keys():
             self.commands[command].execute(user, message) 
@@ -267,7 +267,7 @@ class Bot():
                 self.text_commands[command]
             )
             is_custom_command = 1
-            self.store_command_data(user, command, is_custom_command)
+            self.store_command_data(user, command, is_custom_command, message_id)
         
         self.text_commands = self.reload_text_commands()
 
