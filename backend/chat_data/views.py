@@ -28,3 +28,10 @@ def follow(requests, user_id):
     user.followed_at = timezone.now()
     user.save()
     return JsonResponse({'following': True})
+
+
+def new_rooms(requests):
+    chat_rooms = [i.name for i in ChatRoom.objects.all()]
+    monitor_rooms = [i.name for i in RoomsToMonitor.objects.all()]
+    new_rooms = [i for i in monitor_rooms if i not in chat_rooms]
+    return JsonResponse({'new_rooms': new_rooms})

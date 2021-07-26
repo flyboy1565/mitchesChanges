@@ -4,7 +4,7 @@ from bot import Bot
 
 def main():
     bot = Bot()
-    bot.connect_to_channel()
+    bot.connect_to_twitch()
 
 
 if __name__ == "__main__":

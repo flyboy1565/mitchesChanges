@@ -18,6 +18,7 @@ class StreamUsers(models.Model):
 
     class Meta: 
         db_table = "followers"
+        verbose_name_plural = "Stream Users"
 
 
 class ChatRoom(models.Model):
@@ -29,10 +30,11 @@ class ChatRoom(models.Model):
 
     class Meta:
         db_table = 'rooms'
+        verbose_name_plural = "Chat Rooms"
 
 
 class ChatMessages(models.Model):
-    twith_id = models.CharField(max_length=50, unique=True)
+    twith_id = models.CharField(max_length=50, unique=True, primary_key=True)
     time = models.DateTimeField(auto_now_add=True)
     user = models.ForeignKey(StreamUsers, related_name='messages', on_delete=models.DO_NOTHING)
     room = models.ForeignKey(ChatRoom, related_name='room', on_delete=models.DO_NOTHING)
@@ -43,6 +45,7 @@ class ChatMessages(models.Model):
 
     class Meta: 
         db_table = "chat_messages"
+        verbose_name_plural = "Chat Messages"
     
 
 class CommandUse(models.Model):
@@ -65,6 +68,7 @@ class TextCommands(models.Model):
 
     class Meta: 
         db_table = "text_commands"
+        verbose_name_plural = "Text Commands"
 
 
 class FalseCommands(models.Model):
@@ -75,6 +79,7 @@ class FalseCommands(models.Model):
 
     class Meta: 
         db_table = "false_commands"
+        verbose_name_plural = "False Commands"
 
 
 class BotTime(models.Model):
@@ -109,3 +114,4 @@ class RoomsToMonitor(models.Model):
 
     class Meta:
         db_table = 'rooms_to_monitor'
+        verbose_name_plural = "Rooms to Monitor"

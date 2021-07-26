@@ -31,10 +31,12 @@ class Bot():
         self.DJANGO_URL = DJANGO_URL
         self.commands = {s.command_name: s for s in (c(self) for c in command.CommandBase.__subclasses__())}
         self.text_commands = self.reload_text_commands()
+        self.check_for_new_rooms()
         self.channel = self.get_channels_to_monitor()
         self.TwitchBaseUrl = "https://api.twitch.tv/helix/"
         self.message_trigger = 0
         self.current_monitoring = []
+        
 
     @staticmethod
     def bot_say(text):
@@ -59,12 +61,19 @@ class Bot():
             print(f'Bearer Requesst Failed: {response.content}')
 
 
-    # connect to IRC server and begin checking for messages
-    def connect_to_channel(self):
+    def connect_to_twitch(self):
         self.irc = socket.socket()
         self.irc.connect((self.server, self.port))
         self.irc_command(f"PASS oauth:{self.oauth_token}")
         self.irc_command(f"NICK {self.bot_name}")
+        self.connect_to_channel()
+        self.irc_command(f"CAP REQ :twitch.tv/tags")        
+        self.check_for_messages()
+
+
+
+    # connect to IRC server and begin checking for messages
+    def connect_to_channel(self):
         for channel in self.channel:
             is_live = self.check_if_channel_is_live(channel)
             if is_live is not None and channel not in self.current_monitoring:
@@ -73,8 +82,6 @@ class Bot():
                 self.current_monitoring.append(channel)
                 self.irc_command(f"JOIN #{channel}")
                 # self.send_message(channel, "Hello All!")
-        self.irc_command(f"CAP REQ :twitch.tv/tags")        
-        self.check_for_messages()
 
 
     def get_channels_to_monitor(self):
@@ -124,6 +131,10 @@ class Bot():
                 print('PING RECEIVED')
                 self.irc_command("PONG :tmi.twitch.tv")
 
+            if 'Login unsuccessful' in messages:
+                print(messages)
+                raise BaseException("Login was unsuccessful. ")
+
             for m in messages.split("\r\n"):
                 if m.strip() != '':
                     # print('--Start Message Processing--')
@@ -137,7 +148,7 @@ class Bot():
                 return
             
             regex = """@badge-info=(?P<badge_info>([\w\/\d\0]+|));badges=(?P<badges>([\w\/\d,]{1,})|);.*;display-name=(?P<display_name>[\w]+);emotes=(?P<emotes>([\w\/\d:\-]+)|).*id=(?P<message_id>[\w\-\d]+);mod=(?P<mod>\d+);.*room-id=(?P<room_id>\d+);subscriber=(?P<subscriber>\d+);.*user-id=(?P<user_id>\d+);.*PRIVMSG\s#(?P<room_name>[\w\-\d]+)\s:(?P<message>[@#\-\$A-Za-z0-9].*[^;])$"""
-            # print(message)
+            print(message)
             pat_message = re.compile(regex, flags=re.IGNORECASE)
 
             details = pat_message.search(message)
@@ -173,6 +184,7 @@ class Bot():
             self.store_message_data(user, room, details['message'], details['message_id'])
             if self.message_trigger == 15:
                 self.reload_text_commands()
+                self.check_for_new_rooms()
                 self.connect_to_channel()
                 self.message_trigger = 0 
 
@@ -195,6 +207,22 @@ class Bot():
             # print('User Not Found', response.json())
         return 
     
+
+    def check_for_new_rooms(self):
+        response = requests.get(f'{DJANGO_URL}/new_rooms/')
+        if response.status_code > 300:
+            raise BaseException('Failed to get new rooms')
+        rooms = response.json()['new_rooms']
+        if len(rooms) > 0:
+            for room in rooms:
+                room_id = self.get_twitch_user(room)
+                if room_id:
+                    response = requests.post(f'{DJANGO_URL}/rooms/', data={'room_id': room_id, 'name': room})        
+                    if response.status_code > 300:
+                        print(response.content())
+                        raise BaseException('Problem adding rooms')
+        return
+                
    
     def get_user(self, user_id, username):
         response = requests.get(f'{DJANGO_URL}/users/{user_id}/')
