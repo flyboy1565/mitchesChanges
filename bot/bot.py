@@ -5,8 +5,9 @@ import command
 import requests
 import pyttsx3
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
+from textblob import TextBlob
 
 load_dotenv("./credentials.env")
 
@@ -28,14 +29,30 @@ class Bot():
         self.bearer = self.get_bearer()
         self.user_name = os.getenv('USERNAME')
         self.bot_trigger = os.getenv('BOT_TRIGGER')
+        self.TwitchBaseUrl = "https://api.twitch.tv/helix/"
         self.DJANGO_URL = DJANGO_URL
         self.commands = {s.command_name: s for s in (c(self) for c in command.CommandBase.__subclasses__())}
         self.text_commands = self.reload_text_commands()
         self.check_for_new_rooms()
         self.channel = self.get_channels_to_monitor()
-        self.TwitchBaseUrl = "https://api.twitch.tv/helix/"
         self.message_trigger = 0
+        self.time_trigger = datetime.now()
         self.current_monitoring = []
+
+    @staticmethod
+    def isEnglish(message):
+        message = TextBlob(message)
+        if len(message) > 4:
+            language = message.detect_language()
+            if 'en' != language:
+                try:
+                    new_message = message.translate(to='en')
+                except:
+                    return message, True
+                else:
+                    print('That wasnt english here is a translation: {}'.format(message))
+                    return new_message, False
+        return message, True
         
 
     @staticmethod
@@ -148,7 +165,7 @@ class Bot():
                 return
             
             regex = """@badge-info=(?P<badge_info>([\w\/\d\0]+|));badges=(?P<badges>([\w\/\d,]{1,})|);.*;display-name=(?P<display_name>[\w]+);emotes=(?P<emotes>([\w\/\d:\-]+)|).*id=(?P<message_id>[\w\-\d]+);mod=(?P<mod>\d+);.*room-id=(?P<room_id>\d+);subscriber=(?P<subscriber>\d+);.*user-id=(?P<user_id>\d+);.*PRIVMSG\s#(?P<room_name>[\w\-\d]+)\s:(?P<message>[@#\-\$A-Za-z0-9].*[^;])$"""
-            print(message)
+            # print(message)
             pat_message = re.compile(regex, flags=re.IGNORECASE)
 
             details = pat_message.search(message)
@@ -168,8 +185,11 @@ class Bot():
 
             user = self.get_user(details['user_id'], details['display_name'])
             room = self.get_room(details['room_name'].strip('#'), int(details['room_id']))
+            message,  wasEnglish = self.isEnglish(details['message'])
             print(f'Message: {details["room_name"]} - {details["display_name"]}: {details["message"]}\n')
-            message = details['message']
+            self.store_message_data(user, room, details['message'], details['message_id'])
+            # if wasEnglish is False and details['room_name'] == 'mitchsworkshop':
+            #     self.send_message(details['room_name'], 'Transator: {}'.format(message))
             self.message_trigger += 1
             # check for commands being used
             check = message.startswith(f"{self.bot_trigger}")
@@ -181,12 +201,14 @@ class Bot():
                 else:
                     self.execute_command(details['user_id'], details['room_name'], command, message, details['message_id'])
             
-            self.store_message_data(user, room, details['message'], details['message_id'])
-            if self.message_trigger == 15:
+            now = (datetime.now() - timedelta(minutes=5)).strftime('%H:%M:%S')
+            trigger = self.time_trigger.strftime('%H:%M:%S')
+            if self.message_trigger == 15 and self.time_trigger < (datetime.now() - timedelta(minutes=15)):
                 self.reload_text_commands()
                 self.check_for_new_rooms()
                 self.connect_to_channel()
                 self.message_trigger = 0 
+                self.time_trigger = datetime.now()
 
         except AttributeError:
             pass
@@ -209,6 +231,7 @@ class Bot():
     
 
     def check_for_new_rooms(self):
+        print('Checking for new Rooms')
         response = requests.get(f'{DJANGO_URL}/new_rooms/')
         if response.status_code > 300:
             raise BaseException('Failed to get new rooms')

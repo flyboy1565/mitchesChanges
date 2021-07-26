@@ -3,7 +3,7 @@ from django.db.models import Count
 from django.http import JsonResponse, HttpResponseNotFound
 from django.utils import timezone
 
-from .models import StreamUsers, CommandUse
+from .models import *
 
 # Create your views here.
 def rankedCommands(requests,user, command=None):
