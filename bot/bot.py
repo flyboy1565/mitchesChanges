@@ -8,6 +8,7 @@ import json
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from textblob import TextBlob
+from utils import make_requests
 
 load_dotenv("./credentials.env")
 
@@ -122,8 +123,6 @@ class Bot():
                     return response.json()['data'][0]
         return None
 
-    
-    # execute IRC commands
     # execute IRC commands
     def irc_command(self, command: str):
         print(f"IRC Commands -- {command}\r\n")
@@ -264,6 +263,7 @@ class Bot():
 
     def get_room(self, room_name, room_id):
         # print(room_name, room_id)
+        
         response = requests.get(f'{DJANGO_URL}/rooms/{room_name}/')
         if response.status_code < 300:
             # print(response.json())

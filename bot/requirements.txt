@@ -9,3 +9,6 @@ pytzdata==2020.1
 requests-unixsocket==0.2.0
 pyttsx3==2.90
 textblob==0.15.3
+twitchrealtimehandler==0.0.2
+pydub==0.25.1
+fake-useragent==0.1.11
